@@ -27,5 +27,16 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+    
+        DMux4Way(in=load,sel=address[13..14],a=ram,b=rram,c=scrn,d=keybd);   // Are we headed to screen, keyboard, or RAM?
+        
+        Or(a=ram,b=rram,out=rr);                                            // Determines load bit -- are we writing to RAM or not?
+        RAM16K(in=in,load=rr,address=address[0..13],out=r);                
+
+        Screen(in=in,load=scrn,address=address[0..12],out=sc);              // Writes changes to screen
+
+        Keyboard(out=k);                                                    // Probes kbd output 
+
+        Mux4Way16(a=r,b=r,c=sc,d=k,sel=address[13..14],out=out);            // sends completed memory output
+
 }

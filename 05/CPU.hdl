@@ -39,5 +39,37 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-    // Put your code here:
+    Not(in=instruction[15],out=ni);  // Sel, determines A or C instruction
+    Mux16(a=outtM,b=instruction,sel=ni,out=i); // Routes either instructions, or ALU output, to A register
+
+    Or(a=ni,b=instruction[5],out=intoA);  // Load, determines whether input is written to register (instruction[5] being the first of the destination bits)
+    ARegister(in=i,load=intoA,out=A,out[0..14]=addressM); // Writes possible changes to register
+
+    And(a=instruction[15],b=instruction[12],out=AorM); // Sel - if 1, we have a C instruction; if 0, we have an A;
+    Mux16(a=A,b=inM,sel=AorM,out=AM); // Passes inM or output of A register to the ALU
+
+    ALU(x=D,y=AM,zx=instruction[11],nx=instruction[10],zy=instruction[9],ny=instruction[8],
+    f=instruction[7],no=instruction[6],out=outtM,out=outM,zr=zr,ng=ng);  // if AM = inM, perform some mathematical function;
+
+    And(a=instruction[15],b=instruction[4],out=intoD); // Load, must be an A instruction with an 1 d-instruction bit to 'activate'
+    DRegister(in=outtM,load=intoD,out=D);
+
+    And(a=instruction[15],b=instruction[3],out=writeM); // writeM's standalone control bit -- must be an A instruction with a 1 d-instruction bit
+
+    Not(in=ng,out=pos);
+    Not(in=zr,out=nzr);
+    And(a=instruction[15],b=instruction[0],out=jgt);  // setting right-most jump bit
+    And(a=pos,b=nzr,out=posnzr);
+    And(a=jgt,b=posnzr,out=ld1);
+
+    And(a=instruction[15],b=instruction[1],out=jeq);  // setting middle jump bit
+    And(a=jeq,b=zr,out=ld2);
+
+    And(a=instruction[15],b=instruction[2],out=jlt); // setting left-most jump bit
+    And(a=jlt,b=ng,out=ld3);
+
+    Or(a=ld1,b=ld2,out=ldt);
+    Or(a=ld3,b=ldt,out=ld); // detemines load bit of PC
+
+    PC(in=A,load=ld,inc=true,reset=reset,out[0..14]=pc);
 }
